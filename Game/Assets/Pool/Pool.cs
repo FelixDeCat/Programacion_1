@@ -1,35 +1,41 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
-public class Pool<T,Owner> where T : IPooleable<Owner>
+public class Pool<T>
 {
-    int initial_cant;
+    private int initial_cant;
 
-    Owner owner;
+    public List<PoolObj<T>> pool = new List<PoolObj<T>>();
+    public List<PoolObj<T>> active = new List<PoolObj<T>>();
 
-    public List<T> pool = new List<T>();
-    public List<T> active = new List<T>();
     public Factory<T> factory;
 
-    public Pool(Owner owner, GameObject model, int cant = 10)
+    private Action<T, Action<T>>   OnActive;
+    private Action<T>           OnDisable;
+
+    public Pool(GameObject model, Action<T, Action<T>> _OnActive, Action<T> _OnDisable, int cant = 10)
     {
-        this.owner = owner;
         initial_cant = cant;
         factory = new Factory<T>(model);
+        
+
+        OnActive = _OnActive;
+        OnDisable = _OnDisable;
     }
 
     public void Create()
     {
         for (int i = 0; i < initial_cant*2; i++)
         {
-            var obj = factory.IntanciateObject();
+            PoolObj<T> obj = new PoolObj<T>(factory.IntanciateObject(),OnActive, OnDisable, ReleaseObject);
             obj.Deactivate();
             pool.Add(obj);
         }
     }
 
-    public T GetObject()
+    public PoolObj<T> GetObject()
     {
         //si no tengo creo mas
         if (pool.Count <= 0) Create();
@@ -37,21 +43,20 @@ public class Pool<T,Owner> where T : IPooleable<Owner>
         //como ya tengo devuelvo el proximo
         var toreturn = pool[pool.Count - 1];
         pool.RemoveAt(pool.Count - 1);
-        active.Add(toreturn);
-        toreturn.SetOwner(owner);
         toreturn.Activate();
+        active.Add(toreturn);
         return toreturn;
     }
 
     public void ReleaseObject(T obj)
     {
-        foreach (var o in active)
+        foreach (var a in active)
         {
-            if (obj.Equals(o))
+            if (obj.Equals(a.GetObj))
             {
-                o.Deactivate();
-                pool.Add(obj);
-                active.Remove(obj);
+                pool.Add(a);
+                a.Deactivate();
+                active.Remove(a);
                 return;
             }
         }

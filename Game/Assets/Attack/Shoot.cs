@@ -1,21 +1,19 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
-public class Shoot : Attack
+public class Shoot<T>
 {
-    public Shoot(Vector3 _pos) : base(_pos)
-    {
+    Pool<T> bullet_pool;
 
+    public Shoot(Transform pointToFire, GameObject model, Action<T, Action<T>> OnActive, Action<T> OnDeactivate)
+    {
+        bullet_pool = new Pool<T>(model, OnActive, OnDeactivate);
     }
 
-    public override void Hit()
+    public void Shot()
     {
-
-    }
-
-    public override void Shot(Vector3 dir)
-    {
-
+        var obj = bullet_pool.GetObject();//aca deveria pasarle una funcion con el point of fire
     }
 }

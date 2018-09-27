@@ -8,22 +8,35 @@ public class Player : Entity {
     public Transform rotator;
     public Transform point_to_fire;
 
+    public Shoot<Bullet> shoot;
+
     public override void Init()
     {
-        base.Init();
+        shoot = new Shoot<Bullet>(point_to_fire, bullet_model, Bullet.Activar, Bullet.Desactivar );
     }
+
 
     public void Attack()
     {
-        bullet_pool
-            .GetObject()
-            .Move(point_to_fire.position, point_to_fire.rotation, 0.1f);
+        shoot.Shot();
     }
+
+    public override void Dead()
+    {
+        throw new System.NotImplementedException();
+    }
+
+    public override void FixedRefresh()
+    {
+        foreach (var move in moves) mypos += move.GetVector(transform);
+        myRb.velocity = mypos;
+        mypos = Vector3.zero;
+    }
+
+    
 
     public override void Refresh()
     {
-        base.Refresh();
-
         myQuat = rotation.GetQuaternion(rotator);
         rotator.rotation = myQuat;
 
@@ -31,16 +44,5 @@ public class Player : Entity {
         {
             Attack();
         }
-
-    }
-
-    public override void FixedRefresh()
-    {
-        base.FixedRefresh();
-    }
-
-    public override void Dead()
-    {
-        base.Dead();
     }
 }

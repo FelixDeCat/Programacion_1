@@ -6,8 +6,6 @@ public class Factory<T>
 {
     public GameObject model;
 
-    T obj;
-
     public Factory(GameObject model) {
         this.model = model;
     }
