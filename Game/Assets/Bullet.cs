@@ -39,11 +39,11 @@ public class Bullet : MonoBehaviour
         bullet.Deactivate();
     }
 
-    public void Set(Vector2 _pos, Quaternion _dir, float _speed)
+    public void Set(Transform pointtoshoot , float _speed)
     {
         speed = _speed;
-        transform.position = _pos;
-        transform.rotation = _dir;
+        transform.position = pointtoshoot.position;
+        transform.rotation = pointtoshoot.rotation;
     }
 
     void Awake()

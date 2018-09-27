@@ -12,8 +12,8 @@ public class Shoot<T>
         bullet_pool = new Pool<T>(model, OnActive, OnDeactivate);
     }
 
-    public void Shot()
+    public PoolObj<T> Shot()
     {
-        var obj = bullet_pool.GetObject();//aca deveria pasarle una funcion con el point of fire
+        return bullet_pool.GetObject();//aca deveria pasarle una funcion con el point of fire
     }
 }

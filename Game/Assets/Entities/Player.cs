@@ -12,13 +12,13 @@ public class Player : Entity {
 
     public override void Init()
     {
-        shoot = new Shoot<Bullet>(point_to_fire, bullet_model, Bullet.Activar, Bullet.Desactivar );
+        shoot = new Shoot<Bullet>(point_to_fire, bullet_model, Bullet.Activar, Bullet.Desactivar);
     }
-
 
     public void Attack()
     {
-        shoot.Shot();
+        var obj = shoot.Shot();
+        obj.GetObj.Set(point_to_fire, 5);
     }
 
     public override void Dead()
