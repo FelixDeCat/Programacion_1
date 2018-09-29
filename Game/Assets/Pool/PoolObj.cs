@@ -20,7 +20,6 @@ public class PoolObj<T>
 
     public void Activate()
     {
-        Debug.Log("Haciendo el Activate");
         OnActive(GetObj, Advice);
     }
     public void Deactivate()

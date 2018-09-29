@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System.Linq;
 
 public class Player : Entity {
 
@@ -10,15 +9,24 @@ public class Player : Entity {
 
     public Shoot<Bullet> shoot;
 
+    public Sensor enemySensor;
+    public TriggerFilter<Enemy> enemyTrigger;
+    public LayerMask layerEnemy;
+
     public override void Init()
     {
-        shoot = new Shoot<Bullet>(point_to_fire, bullet_model, Bullet.Activar, Bullet.Desactivar);
+        shoot = new Shoot<Bullet>(Bullet.Activar, Bullet.Desactivar, Bullet.SetPoolObj, point_to_fire, 5f, bullet_model);
+        enemyTrigger = new TriggerFilter<Enemy>(enemySensor, HitWithEnemy, layerEnemy, TriggerFilter<Enemy>.TriggerType._2D);
+    }
+
+    public void HitWithEnemy(Enemy e)
+    {
+        Debug.Log("Hit With Enemy");
     }
 
     public void Attack()
     {
-        var obj = shoot.Shot();
-        obj.GetObj.Set(point_to_fire, 5);
+        shoot.Shot();
     }
 
     public override void Dead()

@@ -7,13 +7,21 @@ public class Shoot<T>
 {
     Pool<T> bullet_pool;
 
-    public Shoot(Transform pointToFire, GameObject model, Action<T, Action<T>> OnActive, Action<T> OnDeactivate)
+    Action<PoolObj<T>, Transform, float> configurer;
+    Transform pointToShoot;
+    float speed;
+
+    public Shoot(Action<T, Action<T>> OnActive, Action<T> OnDeactivate, Action<PoolObj<T>,Transform, float> configurer, Transform pointToShoot, float speed, GameObject model)
     {
         bullet_pool = new Pool<T>(model, OnActive, OnDeactivate);
+        this.configurer = configurer;
+        this.pointToShoot = pointToShoot;
+        this.speed = speed;
     }
 
-    public PoolObj<T> Shot()
+    public void Shot()
     {
-        return bullet_pool.GetObject();//aca deveria pasarle una funcion con el point of fire
+        var obj = bullet_pool.GetObject();
+        configurer(obj,pointToShoot, speed);
     }
 }

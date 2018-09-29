@@ -19,7 +19,6 @@ public class Pool<T>
     {
         initial_cant = cant;
         factory = new Factory<T>(model);
-        
 
         OnActive = _OnActive;
         OnDisable = _OnDisable;
