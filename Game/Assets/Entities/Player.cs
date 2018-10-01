@@ -7,6 +7,8 @@ public class Player : Entity {
     public Transform rotator;
     public Transform point_to_fire;
 
+
+    public GameObject bullet_model;
     public Shoot<Bullet> shoot;
 
     public Sensor enemySensor;
@@ -45,12 +47,17 @@ public class Player : Entity {
 
     public override void Refresh()
     {
-        myQuat = rotation.GetQuaternion(rotator);
-        rotator.rotation = myQuat;
+        //myQuat = rotation.GetQuaternion(transform);
 
-        if (Input.GetMouseButtonDown(0))
+        myeuler = rotation.GetVector(transform);
+        rotator.localEulerAngles = myeuler;
+
+        //rotator.rotation = myQuat;
+
+        if (Input.GetMouseButtonDown(0) || Input.GetButtonDown("Fire1"))
         {
             Attack();
         }
     }
 }
+

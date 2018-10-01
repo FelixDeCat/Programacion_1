@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class UI_HeartManager : MonoBehaviour
 {
-
     public List<UI_HeartGraphic> hearts_graphic;
     public List<Heart> hearts;
 
@@ -20,7 +19,7 @@ public class UI_HeartManager : MonoBehaviour
         Configure();
     }
 
-    public void SetBackendInfo(int life)
+    public void SetLife(int life)
     {
         foreach (var h in hearts) h.ResetConf();
 

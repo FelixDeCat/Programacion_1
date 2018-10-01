@@ -7,19 +7,19 @@ public abstract class Entity : MonoBehaviour, IRefresh, IDead, IInitiable
     public List<Move> moves;
     public Move rotation;
     public float speed;
-    
-    public GameObject bullet_model;
 
-    protected Rigidbody2D myRb;
+    [SerializeField] protected Rigidbody2D myRb;
     protected Vector3 mypos;
     protected Quaternion myQuat;
+    protected Vector3 myeuler;
+
+   
 
     void Awake()
     {
+        "asdasd".Log();
         moves = new List<Move>();
         myRb = gameObject.GetComponent<Rigidbody2D>();
-
-        //bullet_pool = new Pool<Bullet,Entity>(this,bullet_model,5);
     }
 
     public abstract void Init();

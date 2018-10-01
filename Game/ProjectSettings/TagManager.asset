@@ -15,9 +15,9 @@ TagManager:
   - 
   - 
   - Floor
-  - Enemy
   - PlayerBullet
-  - 
+  - Enemy
+  - World
   - 
   - 
   - 
