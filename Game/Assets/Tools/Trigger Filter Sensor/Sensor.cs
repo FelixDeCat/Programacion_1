@@ -18,6 +18,12 @@ public class Sensor : MonoBehaviour
         this.layer = layer;
     }
 
+
+    public void Off()
+    {
+        gameObject.SetActive(false);
+    }
+
     public void OnTriggerEnter(Collider other) { callback(other, layer); }
     public void OnTriggerEnter2D(Collider2D other) { callback2D(other, layer); }
     public void OnTriggerExit(Collider other) {  }

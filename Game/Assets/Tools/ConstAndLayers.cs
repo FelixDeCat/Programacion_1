@@ -33,5 +33,6 @@ public class Layers
 {
     public static int ENEMY = 10;
     public static int WORLD = 11;
+    public static int PLAYER_BULLET = 12;
 }
 

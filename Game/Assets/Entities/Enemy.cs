@@ -2,14 +2,29 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 using IA2;
 
-public class Enemy : Entity
+public class Enemy : Entity, IRemovable<Enemy>
 {
     [Header("For Eject")]
     public float feedbackHit;
 
-    float life; public float Life { get { return life; } }
+    bool isDeath;
+
+    Action<Enemy> del_to_remove;
+
+    public LayerMask pared;
+
+    int life; public int Life { get { return life; }
+        set
+        {
+            if (value < 0) { life = 0; isDeath = true; }
+            else life = value;
+            try { lifebar.UpdateLife(life); }
+            catch (System.NullReferenceException ex) { Debug.LogWarning("OJO! lo estas llamando antes de crear el GenericLifeBar"); }
+        }
+    }
     bool red, green;
     public bool IsRed { get { return red; } }
     public bool IsGreen { get { return green; } }
@@ -17,15 +32,57 @@ public class Enemy : Entity
     public Renderer Render { get { return myRender; } }
     public Color Color { set { myRender.material.color = value; if (value == Color.red) red = true; if (value == Color.green) green = true; } }
 
+    GenericLifeBar lifebar;
+    TriggerFilter<Bullet> bulletTrigger;
+    EnemyAnimation anim;
+
     //////////////////////////////////////////////////////
     //////////////////////////////////////////////////////
-    public void Awake()
+
+    void LifeBarFound(UI_Generic_LifeBar uifounded) { lifebar = new GenericLifeBar(uifounded, life, life); }
+    void SensorFound(Sensor sensorfounded)
     {
+        bulletTrigger = new TriggerFilter<Bullet>(
+            sensorfounded, 
+            BulletReceived, 
+            Layers.PLAYER_BULLET, 
+            TriggerFilter<Bullet>.TriggerType._2D);
+    }
+    void AnimatorFound(Animator _animatorFounded)
+    {
+        anim = new EnemyAnimation(_animatorFounded);
+    }
+
+    void BulletReceived(Bullet b)
+    {
+        b.Desactivar();
+        var damage = b.Damage;
+        Life -= damage;
+        if (isDeath)
+        {
+            if (!anim.CanDieMore())
+            {
+                bulletTrigger.Off();
+                gameObject.GetComponent<Collider2D>().enabled = false;
+            }
+        }
+    }
+
+    public override void Awake()
+    {
+        myRb = gameObject.GetComponent<Rigidbody2D>();
+
         myRender = GetComponent<Renderer>();
         GetThePlayer();
         myRender.material.color = red ? Color.red : Color.blue;
-        life = UnityEngine.Random.Range(1, 60);
+
+        Life = UnityEngine.Random.Range(60, 100);
+
+        gameObject.FindAndLink<UI_Generic_LifeBar>(LifeBarFound);
+        gameObject.FindAndLink<Sensor>(SensorFound);
+        gameObject.FindAndLink<Animator>(AnimatorFound);
     }
+
     public override void Init()
     {
         StateMachine();
@@ -43,6 +100,12 @@ public class Enemy : Entity
     {
         SendInputToFSM(Inputs.DIE);
     }
+
+    public void ConfigureToRemove(Action<Enemy> deltoremove)
+    {
+        del_to_remove = deltoremove;
+    }
+
     //////////////////////////////////////////////////////
     //////////////////////////////////////////////////////
 
@@ -127,6 +190,7 @@ public class Enemy : Entity
         idle.OnEnter += x =>
         {
             myRb.velocity = Vector2.zero;
+            anim.Idle();
         };
         idle.OnUpdate += () =>
         {
@@ -151,6 +215,11 @@ public class Enemy : Entity
         //******************
         //*** PURSUIT
         //******************
+        pursuit.OnEnter += x =>
+        {
+            anim.Run();
+        };
+
         pursuit.OnUpdate += () =>
         {
             Deb_Estado = "PURSUIT";
@@ -160,7 +229,7 @@ public class Enemy : Entity
 
                 if (IsInDistanceToAttack())
                 {
-                    
+
                     SendInputToFSM(Inputs.IN_RANGE_TO_ATTACK);
                 }
             }
@@ -175,6 +244,11 @@ public class Enemy : Entity
         //******************
         //*** SEARCH
         //******************
+        searching.OnEnter += x =>
+        {
+            anim.Walk();
+        };
+
         searching.OnUpdate += () =>
         {
             Deb_Estado = "SEARCH";
@@ -193,10 +267,19 @@ public class Enemy : Entity
             Deb_Estado = "ATTACK";
             if (LineOfSight())
             {
-                if (IsInDistanceToAttack()) Attack();
+                if (IsInDistanceToAttack())
+                {
+                    anim.Attack();
+                    Attack();
+                }
                 else SendInputToFSM(Inputs.OUT_RANGE_TO_ATTACK);
             }
             else SendInputToFSM(Inputs.OUT_LINE_OF_SIGHT);
+        };
+
+        attack.OnExit += x =>
+        {
+            timer = 0;
         };
 
         //******************
@@ -216,9 +299,10 @@ public class Enemy : Entity
         {
             Deb_Estado = "DEATH";
             canMove = false;
-            if (myRender.material.color == Color.black) return;
-            myRender.material.color = Color.black;
-            transform.localScale = transform.localScale / 2;
+            gameObject.GetComponent<Collider2D>().enabled = false;
+            anim.Die();
+            lifebar.Off();
+            del_to_remove(this);
         };
 
         ///////////////////////////////////////////////////////////////
@@ -231,7 +315,7 @@ public class Enemy : Entity
     //////////////////////////////////////////////////////
     //////////////////////////////////////////////////////
 
-    
+
     [Header("For Probocate")]
     public float Time_to_Probocate = 5f;
     float timer_to_probocate;
@@ -273,14 +357,20 @@ public class Enemy : Entity
 
         _angleToTarget = Vector2.Angle(transform.up, _directionToTarget);
 
-        if (_angleToTarget <= viewAngle) {
+        if (_angleToTarget <= viewAngle)
+        {
             bool obstaclesBetween = false;
-            var ray = Physics2D.Raycast(transform.position, _directionToTarget, _distanceToTarget, Layers.WORLD);
 
-            if (ray.collider.gameObject.layer == Layers.WORLD) {
-                
-                Debug.LogError("Obstaculo");
-                obstaclesBetween = true;
+            var ray1 = Physics2D.RaycastAll(transform.position, _directionToTarget, _distanceToTarget, pared);
+            //var ray = Physics2D.Raycast(transform.position, _directionToTarget, _distanceToTarget);
+
+            foreach (var v in ray1)
+            {
+                var val = v.collider.gameObject.layer;
+                if (v.collider.gameObject.layer == Layers.WORLD)
+                {
+                    obstaclesBetween = true;
+                }
             }
             return !obstaclesBetween ? true : false;
         }
@@ -303,26 +393,47 @@ public class Enemy : Entity
             _directionToTarget.y + transform.position.y * speed);
 
 
-        myRb.velocity = new Vector2(_directionToTarget.x, _directionToTarget.y );
+        myRb.velocity = new Vector2(_directionToTarget.x, _directionToTarget.y);
         transform.up = Vector2.Lerp(transform.up, _directionToTarget, rotationSpeed * Time.deltaTime);
 
     }
+
+    [Header("For Attack")]
+    public float cooldownAttack;
+    float timer;
+    public int damage;
+
     void Attack()
     {
-        Debug.Log("I'm attacking you (" + target.name + ")");
+        if(timer == 0) Main.instancia.player.ReceiveDamage(damage);
+
+        if (timer < 1)
+        {
+            timer = timer + 1 * Time.deltaTime;
+        }
+        else
+        {
+            timer = 0;
+        }
     }
     public void Scare()
     {
         SendInputToFSM(Inputs.FREEZE);
     }
-    public void TakeDamage(float damage, Vector3 dir)
+    public void TakeDamage(int damage, Vector3 dir)
     {
-        life -= damage;
-        myRb.AddForce(dir * feedbackHit, ForceMode2D.Impulse);
+        //life -= damage;
+        //myRb.AddForce(dir * feedbackHit, ForceMode2D.Impulse);
+        //lifebar.UpdateLife(life);
     }
     public void GetThePlayer()
     {
         target = FindObjectOfType<Player>().gameObject;
+    }
+
+    public void RemoveMe()
+    {
+
     }
 
     //////////////////////////////////////////////////////
@@ -363,6 +474,4 @@ public class Enemy : Entity
     }
 
     
-
-
 }

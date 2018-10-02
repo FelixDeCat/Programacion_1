@@ -15,11 +15,11 @@ TagManager:
   - 
   - 
   - Floor
-  - PlayerBullet
+  - 
   - Enemy
   - World
-  - 
-  - 
+  - PlayerBullet
+  - Player
   - 
   - 
   - 

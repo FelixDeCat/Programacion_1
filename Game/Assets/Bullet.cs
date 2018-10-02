@@ -11,6 +11,28 @@ public class Bullet : MonoBehaviour
     bool canmove;
     static Action<Bullet> aviso;
 
+    public TriggerFilter<GameObject> filter;
+
+    [SerializeField] int damage;
+    public int Damage { get { return damage; } }
+
+    void Awake()
+    {
+        my_sp = GetComponent<SpriteRenderer>();
+        gameObject.FindAndLink<Sensor>(SensorFound);
+    }
+
+    private void SensorFound(Sensor _sensorFounded)
+    {
+        filter = new TriggerFilter<GameObject>(_sensorFounded, ChocoPared, Layers.WORLD, TriggerFilter<GameObject>.TriggerType._2D);
+    }
+
+    private void ChocoPared(GameObject obj)
+    {
+        Debug.Log("se ejecuta el choco pared");
+        Desactivar();
+    }
+
     public static void Activar(Bullet bullet, Action<Bullet> _aviso)
     {
         aviso = _aviso;
@@ -20,17 +42,23 @@ public class Bullet : MonoBehaviour
     {
         bullet.Deactivate();
     }
-
-    public static void SetPoolObj(PoolObj<Bullet> pool_obj, Transform pointtoshoot, float _speed)
+    public void Desactivar()
     {
-        pool_obj.GetObj.Set(pointtoshoot, _speed);
+        aviso(this);
     }
 
-    public void Set(Transform pointtoshoot , float _speed)
+
+    public static void SetPoolObj(PoolObj<Bullet> pool_obj, Transform pointtoshoot, float _speed, int damage)
+    {
+        pool_obj.GetObj.Set(pointtoshoot, _speed, damage);
+    }
+
+    public void Set(Transform pointtoshoot , float _speed, int damage)
     {
         speed = _speed;
         transform.position = pointtoshoot.position;
         transform.rotation = pointtoshoot.rotation;
+        this.damage = damage;
     }
     public void Activate()
     {
@@ -47,10 +75,7 @@ public class Bullet : MonoBehaviour
         canmove = false;
     }
 
-    void Awake()
-    {
-        my_sp = GetComponent<SpriteRenderer>();
-    }
+    
 
 	void Update ()
     {
