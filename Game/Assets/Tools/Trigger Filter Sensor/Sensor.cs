@@ -19,9 +19,9 @@ public class Sensor : MonoBehaviour
     }
 
 
-    public void Off()
+    public void Enable(bool b)
     {
-        gameObject.SetActive(false);
+        gameObject.SetActive(b);
     }
 
     public void OnTriggerEnter(Collider other) { callback(other, layer); }

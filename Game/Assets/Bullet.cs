@@ -29,7 +29,6 @@ public class Bullet : MonoBehaviour
 
     private void ChocoPared(GameObject obj)
     {
-        Debug.Log("se ejecuta el choco pared");
         Desactivar();
     }
 
@@ -69,6 +68,7 @@ public class Bullet : MonoBehaviour
     }
     public void Deactivate()
     {
+        transform.position = new Vector3(1000,1000);
         timer = 0;
         gameObject.name = "Bullet";
         my_sp.enabled = false;

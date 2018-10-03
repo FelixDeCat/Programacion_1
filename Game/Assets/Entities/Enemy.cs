@@ -10,6 +10,9 @@ public class Enemy : Entity, IRemovable<Enemy>
     [Header("For Eject")]
     public float feedbackHit;
 
+    EnemyPreset preset;
+    public EnemyPreset Preset { set { preset = value; } }
+
     bool isDeath;
 
     Action<Enemy> del_to_remove;
@@ -35,6 +38,7 @@ public class Enemy : Entity, IRemovable<Enemy>
     GenericLifeBar lifebar;
     TriggerFilter<Bullet> bulletTrigger;
     EnemyAnimation anim;
+    StateGraphicFeedback feedbackstate;
 
     //////////////////////////////////////////////////////
     //////////////////////////////////////////////////////
@@ -52,17 +56,25 @@ public class Enemy : Entity, IRemovable<Enemy>
     {
         anim = new EnemyAnimation(_animatorFounded);
     }
+    private void FeedbackFound(StateGraphicFeedback obj) { feedbackstate = obj; }
 
+    Vector3 dirbullet;
+    bool receiveABullet;
     void BulletReceived(Bullet b)
     {
         b.Desactivar();
         var damage = b.Damage;
         Life -= damage;
+
+        var aux = b.transform.position - transform.position;
+        dirbullet = aux;
+        receiveABullet = true;
+
         if (isDeath)
         {
             if (!anim.CanDieMore())
             {
-                bulletTrigger.Off();
+                bulletTrigger.Enable(false);
                 gameObject.GetComponent<Collider2D>().enabled = false;
             }
         }
@@ -73,7 +85,7 @@ public class Enemy : Entity, IRemovable<Enemy>
         myRb = gameObject.GetComponent<Rigidbody2D>();
 
         myRender = GetComponent<Renderer>();
-        GetThePlayer();
+        
         myRender.material.color = red ? Color.red : Color.blue;
 
         Life = UnityEngine.Random.Range(60, 100);
@@ -81,11 +93,16 @@ public class Enemy : Entity, IRemovable<Enemy>
         gameObject.FindAndLink<UI_Generic_LifeBar>(LifeBarFound);
         gameObject.FindAndLink<Sensor>(SensorFound);
         gameObject.FindAndLink<Animator>(AnimatorFound);
+        gameObject.FindAndLink<StateGraphicFeedback>(FeedbackFound);
     }
+
+    
 
     public override void Init()
     {
         StateMachine();
+
+        GetThePlayer();
     }
     public override void Refresh()
     {
@@ -119,7 +136,6 @@ public class Enemy : Entity, IRemovable<Enemy>
         TIME_OUT,
         IN_RANGE_TO_ATTACK,
         OUT_RANGE_TO_ATTACK,
-        FREEZE,
         DIE
     }
     private EventFSM<Inputs> _myFsm;
@@ -133,44 +149,35 @@ public class Enemy : Entity, IRemovable<Enemy>
         var pursuit = new State<Inputs>(CommonState.PURSUIRT);
         var searching = new State<Inputs>(CommonState.SEARCHING);
         var attack = new State<Inputs>(CommonState.ATTACKING);
-        var freeze = new State<Inputs>(CommonState.FREEZE);
         var die = new State<Inputs>(CommonState.DIE);
 
         StateConfigurer.Create(idle)
             .SetTransition(Inputs.ON_LINE_OF_SIGHT, onSigth)
+            .SetTransition(Inputs.PROBOCATED, searching)
             .SetTransition(Inputs.DIE, die)
-            .SetTransition(Inputs.FREEZE, freeze)
             .Done();
 
         StateConfigurer.Create(onSigth)
             .SetTransition(Inputs.PROBOCATED, pursuit)
             .SetTransition(Inputs.OUT_LINE_OF_SIGHT, searching)
             .SetTransition(Inputs.DIE, die)
-            .SetTransition(Inputs.FREEZE, freeze)
             .Done();
 
         StateConfigurer.Create(pursuit)
             .SetTransition(Inputs.OUT_LINE_OF_SIGHT, searching)
             .SetTransition(Inputs.IN_RANGE_TO_ATTACK, attack)
             .SetTransition(Inputs.DIE, die)
-            .SetTransition(Inputs.FREEZE, freeze)
             .Done();
 
         StateConfigurer.Create(searching)
             .SetTransition(Inputs.TIME_OUT, idle)
             .SetTransition(Inputs.ON_LINE_OF_SIGHT, pursuit)
             .SetTransition(Inputs.DIE, die)
-            .SetTransition(Inputs.FREEZE, freeze)
             .Done();
 
         StateConfigurer.Create(attack)
             .SetTransition(Inputs.OUT_RANGE_TO_ATTACK, pursuit)
             .SetTransition(Inputs.OUT_LINE_OF_SIGHT, searching)
-            .SetTransition(Inputs.DIE, die)
-            .SetTransition(Inputs.FREEZE, freeze)
-            .Done();
-
-        StateConfigurer.Create(freeze)
             .SetTransition(Inputs.DIE, die)
             .Done();
 
@@ -200,16 +207,28 @@ public class Enemy : Entity, IRemovable<Enemy>
                 Debug.Log("Line of sigth");
                 SendInputToFSM(Inputs.ON_LINE_OF_SIGHT);
             }
+            else
+            {
+                CheckBullet();
+            }
         };
 
         //******************
         //*** ON SIGHT
         //******************
+        onSigth.OnEnter += x =>
+        {
+            feedbackstate.SetStateGraphic(preset.sprite_OnSight);
+        };
         onSigth.OnUpdate += () =>
         {
             Deb_Estado = "ON SIGTH";
             if (LineOfSight()) OnSight_CountDownForProbocate();
             else { timer_to_probocate = 0; SendInputToFSM(Inputs.OUT_LINE_OF_SIGHT); }
+        };
+        onSigth.OnExit += x =>
+        {
+            feedbackstate.SetStateGraphic();
         };
 
         //******************
@@ -247,6 +266,7 @@ public class Enemy : Entity, IRemovable<Enemy>
         searching.OnEnter += x =>
         {
             anim.Walk();
+            feedbackstate.SetStateGraphic(preset.sprite_Search);
         };
 
         searching.OnUpdate += () =>
@@ -255,8 +275,15 @@ public class Enemy : Entity, IRemovable<Enemy>
             if (LineOfSight()) SendInputToFSM(Inputs.ON_LINE_OF_SIGHT);
             else
             {
+                transform.Rotate(0,0,2);
+                CheckBullet();
                 OutSight_CountDownForIgnore();
             }
+        };
+
+        searching.OnExit += x =>
+        {
+            feedbackstate.SetStateGraphic();
         };
 
         //******************
@@ -282,15 +309,6 @@ public class Enemy : Entity, IRemovable<Enemy>
             timer = 0;
         };
 
-        //******************
-        //*** FREEZE
-        //******************
-        freeze.OnEnter += x =>
-        {
-            Deb_Estado = "FREEZE";
-            myRender.material.color = Color.grey;
-            canMove = false;
-        };
 
         //******************
         //*** DEATH
@@ -324,6 +342,7 @@ public class Enemy : Entity, IRemovable<Enemy>
         if (timer_to_probocate < Time_to_Probocate) timer_to_probocate = timer_to_probocate + 1 * Time.deltaTime;
         else { timer_to_probocate = 0; SendInputToFSM(Inputs.PROBOCATED); }
     }
+
     [Header("For Distance To Attack")]
     public float minDisToAttack = 5f;
     bool IsInDistanceToAttack()
@@ -384,18 +403,21 @@ public class Enemy : Entity, IRemovable<Enemy>
     float _distanceToTarget;
     bool _playerInSight;
 
+    public void CheckBullet()
+    {
+        if (receiveABullet)
+        {
+            receiveABullet = false;
+            SendInputToFSM(Inputs.PROBOCATED);
+        }
+        
+    }
+
     protected virtual void FollowPlayer()
     {
         if (!canMove) return;
-
-        Vector2 v2 = new Vector2(
-            _directionToTarget.x + transform.position.x * speed,
-            _directionToTarget.y + transform.position.y * speed);
-
-
-        myRb.velocity = new Vector2(_directionToTarget.x, _directionToTarget.y);
+        myRb.velocity = new Vector2(_directionToTarget.x * speed, _directionToTarget.y * speed);
         transform.up = Vector2.Lerp(transform.up, _directionToTarget, rotationSpeed * Time.deltaTime);
-
     }
 
     [Header("For Attack")]
@@ -407,7 +429,7 @@ public class Enemy : Entity, IRemovable<Enemy>
     {
         if(timer == 0) Main.instancia.player.ReceiveDamage(damage);
 
-        if (timer < 1)
+        if (timer < cooldownAttack)
         {
             timer = timer + 1 * Time.deltaTime;
         }
@@ -416,36 +438,24 @@ public class Enemy : Entity, IRemovable<Enemy>
             timer = 0;
         }
     }
-    public void Scare()
-    {
-        SendInputToFSM(Inputs.FREEZE);
-    }
-    public void TakeDamage(int damage, Vector3 dir)
-    {
-        //life -= damage;
-        //myRb.AddForce(dir * feedbackHit, ForceMode2D.Impulse);
-        //lifebar.UpdateLife(life);
-    }
+
     public void GetThePlayer()
     {
-        target = FindObjectOfType<Player>().gameObject;
-    }
-
-    public void RemoveMe()
-    {
-
+        target = Main.instancia.player.gameObject;
     }
 
     //////////////////////////////////////////////////////
     //////////////////////////////////////////////////////
 
     [Header("Gizmos & Feedback")]
-    public bool DrawGizmos;
+    public bool DrawAndDebug;
     [SerializeField]
-    TextMesh debug_estado; public object Deb_Estado { set { debug_estado.text = value.ToString(); } }
+    TextMesh debug_estado; public object Deb_Estado { set { debug_estado.text = DrawAndDebug ? value.ToString() : ""; } }
+
+   
     protected virtual void OnDrawGizmos()
     {
-        if (!DrawGizmos) return;
+        if (!DrawAndDebug) return;
 
         target = FindObjectOfType<Player>().gameObject;
 

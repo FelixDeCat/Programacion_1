@@ -31,8 +31,10 @@ public static class PHYSICAL_INPUT
 
 public class Layers
 {
+    public static int PLAYER = 13;
     public static int ENEMY = 10;
     public static int WORLD = 11;
     public static int PLAYER_BULLET = 12;
+    public static int ENEMY_BULLET = 14;
 }
 

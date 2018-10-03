@@ -12,6 +12,8 @@ public class Shoot<T>
     float speed;
     int damage;
 
+    public void Clear() { bullet_pool.Clear(); }
+
     public Shoot(Action<T, Action<T>> OnActive, Action<T> OnDeactivate, Action<PoolObj<T>,Transform, float, int> configurer, Transform pointToShoot, float speed, GameObject model, int damage)
     {
         bullet_pool = new Pool<T>(model, OnActive, OnDeactivate);

@@ -9,16 +9,20 @@ public class Player : Entity {
     public Transform point_to_fire;
 
     int life;
+    const int MAX = 100;
+    bool isdead;
 
     public GameObject bullet_model;
     public Shoot<Bullet> shoot;
     public int bulletDamage;
 
+    public Vector3 lastCheckPoint;
+
     [SerializeField] UI_HeartManager heartManager;
 
     public Sensor enemySensor;
-    public TriggerFilter<Enemy> enemyTrigger;
-    public LayerMask layerEnemy;
+    public TriggerFilter<Bullet> enemyTrigger;
+    public LayerMask LayerBullet;
 
     PlayerAnimation anim;
 
@@ -33,6 +37,21 @@ public class Player : Entity {
         }
     }
 
+    public int BulletDamage
+    {
+        get
+        {
+            return bulletDamage;
+        }
+
+        set
+        {
+            bulletDamage = value;
+            shoot.Clear();
+            shoot = new Shoot<Bullet>(Bullet.Activar, Bullet.Desactivar, Bullet.SetPoolObj, point_to_fire, 5f, bullet_model, bulletDamage);
+        }
+    }
+
     public override void Awake()
     {
         moves = new List<Move>();
@@ -42,8 +61,8 @@ public class Player : Entity {
     public override void Init()
     {
         canmove = true;
-        shoot = new Shoot<Bullet>(Bullet.Activar, Bullet.Desactivar, Bullet.SetPoolObj, point_to_fire, 5f, bullet_model, bulletDamage);
-        enemyTrigger = new TriggerFilter<Enemy>(enemySensor, HitWithEnemy, layerEnemy, TriggerFilter<Enemy>.TriggerType._2D);
+        shoot = new Shoot<Bullet>(Bullet.Activar, Bullet.Desactivar, Bullet.SetPoolObj, point_to_fire, 5f, bullet_model, BulletDamage);
+        enemyTrigger = new TriggerFilter<Bullet>(enemySensor, HitWithBUllet, Layers.ENEMY_BULLET, TriggerFilter<Bullet>.TriggerType._2D);
         Life = 100;
 
         gameObject.FindAndLink<Animator>(AnimatorFound);
@@ -60,9 +79,27 @@ public class Player : Entity {
         Life -= damage;
     }
 
-    public void HitWithEnemy(Enemy e)
+    public void HitWithBUllet(Bullet e)
     {
-        Debug.Log("Hit With Enemy");
+        e.Desactivar();
+        ReceiveDamage(e.Damage);
+
+        if (isdead)
+        {
+            enemyTrigger.Enable(false);
+        }
+    }
+
+    public void Resurrect(Vector2 position)
+    {
+        enemyTrigger.Enable(true);
+        transform.position = position;
+        Life = MAX;
+        canmove = true;
+        isdead = false;
+        anim.Idle();
+        myRb.simulated = true;
+        Main.instancia.msj.ShowMessage(false);
     }
 
     public void Attack()
@@ -72,7 +109,17 @@ public class Player : Entity {
 
     public override void Dead()
     {
+        isdead = true;
+        canmove = false;
         anim.Die();
+        myRb.simulated = false;
+        Main.instancia.msj.ShowMessage(true);
+        Main.instancia.msj.SetEndMessage(MessageDeadEnd);
+    }
+
+    private void MessageDeadEnd()
+    {
+        Resurrect(lastCheckPoint);
     }
 
     public override void FixedRefresh()

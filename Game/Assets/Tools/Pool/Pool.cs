@@ -15,6 +15,12 @@ public class Pool<T>
     private Action<T, Action<T>>   OnActive;
     private Action<T>           OnDisable;
 
+    public void Clear()
+    {
+        pool.Clear();
+        active.Clear();
+    }
+
     public Pool(GameObject model, Action<T, Action<T>> _OnActive, Action<T> _OnDisable, int cant = 10)
     {
         initial_cant = cant;
@@ -59,6 +65,6 @@ public class Pool<T>
                 return;
             }
         }
-        Debug.LogError("no se encontro el objeto a relesear");
+        //Debug.LogError("no se encontro el objeto a relesear");
     }
 }
